@@ -1,0 +1,94 @@
+---
+
+- hosts: web-server
+  become: true
+  vars:
+    DB_Server_address: 40.118.103.88
+    App_Server_address: 40.118.103.138
+  tasks:
+  - name: Check for the connection [ping]
+    ping:
+  - name: Update Advanced Packaging Tool
+    apt: 
+      update_cache: yes
+      upgrade: dist
+      force_apt_get: yes
+
+  - name: Installation of git
+    apt:
+      name: git
+      state: present
+      update_cache: yes
+  - name: Clone the repository [Multi-Tier-App-Demo.git]
+    git:
+      repo: https://github.com/brichbourg/Multi-Tier-App-Demo.git
+      dest: /home/azureuser/App-demo-project
+  - name: Installation Apache2
+    apt:
+      name: apache2
+      state: latest
+      update_cache: yes
+  
+  - name: Checking service Apache2
+    service:
+      name: apache2
+      state: started
+      enabled: yes
+
+  - name: Installation of PIP [python-pip]
+    apt:
+      name: python-pip
+      state: latest
+  
+  - name: Installation of PyMySQL
+    pip:
+      name: pymysql
+      state: present
+  
+  - name: Running the command [a2dismod mpm_event]
+    command: a2dismod mpm_event
+    
+
+  - name: Running the command [a2enmod mpm_prefork cgi]
+    command: a2enmod mpm_prefork cgi
+    notify:
+      - Restart service apache
+
+  - name: Download the file [000-default.conf]
+    get_url: 
+      url: https://s3.amazonaws.com/richbourg-s3/mtwa/web/000-default.conf
+      dest: /etc/apache2/sites-enabled/
+
+  - name: Download the file [ports.conf]
+    get_url: 
+      url: https://s3.amazonaws.com/richbourg-s3/mtwa/web/ports.conf
+      dest: /etc/apache2/
+    notify: 
+      - Restart service apache
+  
+  - name: Running the script [install.sh]
+    shell: echo -e "\n"| ./install.sh
+    args:
+      chdir: /home/azureuser/App-demo-project/
+    
+    
+
+  - name: Update AppServer in configuration file
+    lineinfile:
+      path: /etc/mtwa/mtwa.conf
+      regexp:   '^AppServerName'
+      line: "AppServerName = {{ App_Server_address }}"
+  
+  - name: Update DBServer in configuration file
+    lineinfile:
+      path: /etc/mtwa/mtwa.conf
+      regexp:   '^DBServerName'
+      line: "DBServerName = {{ DB_Server_address }}"
+   
+  
+  handlers:
+  - name: Restart service apache
+    service:
+      name: apache2
+      state: restarted
+
