@@ -1,0 +1,80 @@
+---
+- hosts: bdd-server
+  become: true
+  vars:
+
+    mysql_root_user:
+
+        user_name: root
+        priv: '*.*:ALL'
+        password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          63346130306430633661353639313037333265363830333066373333616666393832353136303065
+          3465323964313230383832303466613263653438346431650a643338303530303732306434343366
+          63393130643935613237343130616435393635663336366231356230366366333963623361396435
+          3234343134626362630a373165313734613266393935393433376564666161633633336330633862
+          3831
+      
+    mysql_packages:
+    - mysql-server
+    - python-mysqldb
+    
+
+  tasks:
+  - name: Check for the connexion [ping]
+    ping:
+  - name: installation of MySQL Server [mysql-server]
+    apt:
+      name: "{{ mysql_packages }}"
+      state: latest
+      update_cache: yes
+  
+  - name: Download the initial SQL file [create_db_table]
+    get_url: 
+      url: https://raw.githubusercontent.com/brichbourg/Multi-Tier-App-Demo/master/sql/create_db_table.sql
+      dest: /home/azureuser
+
+  - name: Allow for network connections [*]
+    lineinfile:
+      path: /etc/mysql/mysql.conf.d/mysqld.cnf
+      regexp:   '^bind-address'
+      line: "bind-address = *"
+    notify:
+      - Restart mysql service
+
+  - name: Checking for service mysql
+    service:
+      name: mysql
+      state: started
+      enabled: yes
+
+  - name: Change the authentication plugin of MySQL root user to mysql_native_password
+    shell: mysql -u root -e 'UPDATE mysql.user SET plugin="mysql_native_password" WHERE user="root" AND host="localhost"'
+ 
+  - name: Flush Privileges
+    shell: mysql -u root -e 'FLUSH PRIVILEGES'
+ 
+  - name: Set MySQL root password
+    mysql_user:
+      login_host: 'localhost'
+      login_user: 'root'
+      login_password: ''
+      name: 'root'
+      password: '{{ mysql_root_user.password }}'
+      state: present
+     
+
+  - name: Create SQL data base [appdemo]
+    mysql_db:
+      login_user: "{{mysql_root_user.user_name}}"
+      login_password: "{{mysql_root_user.password}}"
+      state: import
+      name: all
+      target: /home/azureuser/create_db_table.sql
+  
+
+  handlers:
+  - name: Restart mysql service
+    service:
+      name: mysql
+      state: restarted
