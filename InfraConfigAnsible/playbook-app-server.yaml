@@ -1,6 +1,4 @@
----
-
-- hosts: web-server
+- hosts: app-server
   become: true
   vars:
     DB_Server_address: 10.1.0.6
@@ -28,7 +26,7 @@
       name: apache2
       state: latest
       update_cache: yes
-  
+
   - name: Checking service Apache2
     service:
       name: apache2
@@ -51,19 +49,17 @@
 
   - name: Running the command [a2enmod mpm_prefork cgi]
     command: a2enmod mpm_prefork cgi
-    notify:
-      - Restart service apache
 
   - name: Download the file [000-default.conf]
     get_url: 
-      url: https://s3.amazonaws.com/richbourg-s3/mtwa/web/000-default.conf
+      url: https://s3.amazonaws.com/richbourg-s3/mtwa/app/000-default.conf
       dest: /etc/apache2/sites-enabled/
 
   - name: Download the file [ports.conf]
     get_url: 
-      url: https://s3.amazonaws.com/richbourg-s3/mtwa/web/ports.conf
+      url: https://s3.amazonaws.com/richbourg-s3/mtwa/app/ports.conf
       dest: /etc/apache2/
-    notify: 
+    notify:
       - Restart service apache
   
   - name: Running the script [install.sh]
@@ -71,8 +67,6 @@
     args:
       chdir: /home/azureuser/App-demo-project/
     
-    
-
   - name: Update AppServer in configuration file
     lineinfile:
       path: /etc/mtwa/mtwa.conf
@@ -91,4 +85,3 @@
     service:
       name: apache2
       state: restarted
-
