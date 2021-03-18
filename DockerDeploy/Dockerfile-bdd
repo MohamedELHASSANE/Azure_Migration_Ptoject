@@ -1,0 +1,4 @@
+FROM mysql
+MAINTAINER ILKILAB
+
+COPY ./Multi-Tier-App-Demo/sql/ /docker-entrypoint-initdb.d/

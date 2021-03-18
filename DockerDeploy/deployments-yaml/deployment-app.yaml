@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  selector:
+    matchLabels:
+      app: app
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: app
+        image: mohamedakka21/ilkiformation:app-v0.3
+        ports:
+        - containerPort: 8080
+        env:
+          - name: APP_SERVICE
+            value: "app"
+          - name: DB_SERVICE
+            value: "bdd"
